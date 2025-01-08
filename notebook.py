@@ -6,7 +6,7 @@ app = marimo.App()
 
 @app.cell
 def __(mo):
-    mo.md("""#3D Geometry File Formats""")
+    mo.md(""" #3D Geometry File Formats""")
     return
 
 
@@ -72,8 +72,89 @@ def __(mo):
 
 
 @app.cell
+def __(mo, np, show):
+    sommets = [
+        (0, 0, 0),  # 0
+        (1, 0, 0),   # 1
+        (1, 1, 0),    # 2
+        (0, 1, 0),   # 3
+        (0, 0, 1),   # 4
+        (1, 0, 1),    # 5
+        (1, 1, 1),     # 6
+        (0, 1, 1),    # 7
+    ]
+    faces = [
+          # Face bas
+        (0, 2, 3),(0, 1, 2), (0, 1, 5), (0, 3, 7),(1, 2, 6),(2, 3, 7),
+        (0, 5, 4),  (0, 7, 4), (1, 6, 5),
+         (2, 7, 6),(4, 5, 6),(4, 6, 7)  # Face haut
+    ]
+    with open('data/cube.stl', "w") as file:
+            file.write("solid cube\n")
+            for face in faces:
+                vecteur1=np.array(sommets[face[1]])-np.array(sommets[face[0]]) #on définit deux vecteurs 'appartenant'au plan
+                vecteur2=np.array(sommets[face[2]])-np.array(sommets[face[0]])
+                normalspasnorme=np.cross(vecteur1,vecteur2)#le pdt vect est forcément 
+                normals=normalspasnorme/np.sqrt(normalspasnorme[0]**2+normalspasnorme[1]**2+normalspasnorme[2]**2)
+                file.write(f"  facet normal {normals[0]} {normals[1]} {normals[2]} \n")  
+                file.write("    outer loop\n")
+                for vertex_index in face:
+                    vertex = sommets[vertex_index]
+                    file.write(f"      vertex {vertex[0]} {vertex[1]} {vertex[2]}\n")
+                file.write("    endloop\n")
+                file.write("  endfacet\n")
+            file.write("endsolid cube\n")
+
+    mo.show_code(show("data/cube.stl", theta=45.0, phi=45.0, scale=0.5))
+    return (
+        face,
+        faces,
+        file,
+        normals,
+        normalspasnorme,
+        sommets,
+        vecteur1,
+        vecteur2,
+        vertex,
+        vertex_index,
+    )
+
+
+@app.cell
 def __(mo):
     mo.md(r"""## STL & NumPy""")
+    return
+
+
+@app.cell
+def __(np):
+    def make_STL(triangles, normals=None, name=""):
+        STL=f'solid {name}\n'
+        for triangle in triangles:
+            vecteur1=triangle[1]-triangle[0] #on définit deux vecteurs 'appartenant'au plan
+            vecteur2=triangle[2]-triangle[0]
+            normalspasnorme=np.cross(vecteur1,vecteur2)#le pdt vect est forcément 
+            normals=normalspasnorme/np.sqrt(normalspasnorme[0]**2+normalspasnorme[1]**2+normalspasnorme[2]**2)
+            STL+=f"  facet normal {normals[0]} {normals[1]} {normals[2]}\n" 
+            STL+="    outer loop\n"
+            for sommet in triangle:
+                STL+=f"      vertex {sommet[0]} {sommet[1]} {sommet[2]}\n"
+            STL+="    endloop\n"
+            STL+="  endfacet\n"
+        STL+=f"endsolid {name}\n"
+        return STL
+    return (make_STL,)
+
+
+@app.cell
+def __(make_STL, np):
+    make_STL(triangles= np.array(
+        [
+            [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+            [[1.0, 1.0, 0.0], [0.0, 1.0, 0.0], [1.0, 0.0, 0.0]],
+        ],
+        dtype=np.float32,
+    ),name='dodo') #test
     return
 
 
@@ -157,6 +238,8 @@ def __(mo):
 
         ```python
         def tokenize(stl):
+            tokens=stl.split(' ')
+            return (tokens)
             pass # 🚧 TODO!
         ```
 
@@ -189,6 +272,31 @@ def __(mo):
         ```
         """
     )
+    return
+
+
+@app.cell
+def __(np):
+    def tokenize(stl):
+        tokens=stl.split()
+        for i,item in enumerate(tokens):
+            try:
+                tokens[i]=np.float32(item)
+            except:
+                continue
+        return (tokens)
+    return (tokenize,)
+
+
+@app.cell
+def __(make_STL, np, tokenize):
+    tokenize(make_STL(triangles= np.array(
+        [
+            [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+            [[1.0, 1.0, 0.0], [0.0, 1.0, 0.0], [1.0, 0.0, 0.0]],
+        ],
+        dtype=np.float32),name='test'
+    ))
     return
 
 
@@ -256,6 +364,40 @@ def __(mo):
 
 
 @app.cell
+def __(np):
+    def parse (tokens):
+        name=tokens[-1]
+        n=0
+        for val in tokens:#compte le nombre de triangles nécessaire
+            if val=='facet':
+                n+=1
+        normals=np.empty((n,3))
+        triangle=np.empty((n,3,3))
+        tr=-1
+        for i,item in enumerate(tokens):
+            if item=='facet':
+                tr+=1
+            if item=='normal':
+                normals[tr]=np.array([tokens[i+1],tokens[i+2],tokens[i+3]])
+            if item=='loop':
+                triangle[tr]=[[tokens[i+2],tokens[i+3],tokens[i+4]],[tokens[i+6],tokens[i+7],tokens[i+8]],[tokens[i+10],tokens[i+11],tokens[i+12]]]
+        return(triangle,normals,name)
+    return (parse,)
+
+
+@app.cell
+def __(make_STL, np, parse, tokenize):
+    parse(tokenize(make_STL(triangles= np.array(
+        [
+            [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+            [[1.0, 1.0, 0.0], [0.0, 1.0, 0.0], [1.0, 0.0, 0.0]],
+        ],
+        dtype=np.float32
+    ),name='marche-stp') ))            #test
+    return
+
+
+@app.cell
 def __(mo):
     mo.md(
         rf"""
@@ -287,6 +429,59 @@ def __(mo):
     """
     )
     return
+
+
+@app.cell
+def __(np, parse, tokenize):
+    def verif(stl):
+        triangle,normals,name=parse(tokenize(stl))
+        n=len(normals)
+        nb_neg=0
+        for valeur in np.nditer(triangle):
+            if valeur<0:
+                nb_neg+=1
+        print(f'{nb_neg} valeurs sont négatives soient{100*(nb_neg)/(9*n)}%')
+        z=triangle[0][0][2]+triangle[0][1][2]+triangle[0][2][2]
+        errors=0
+        for elt in triangle:
+            newz=elt[0][2]+elt[1][2]+elt[2][2]
+            if newz<z:
+                errors+=1
+            z=newz
+        print(f'il y a approximativement {errors} erreurs d_ascendance soit environ {100*errors/n}%' )
+        echecnorme=0
+        for elem in normals:
+            norme=np.sqrt(elem[0]**2+elem[1]**2+elem[2]**2)
+            if norme<0.99 or norme>1.01:
+                echecnorme+=1
+        print(f'il y a {echecnorme} erreurs de norme soit environ {100*echecnorme/n}%' )
+        apparitions={}
+        for facette in triangle:
+            for k in range (3):
+                a=np.concatenate((facette[k],facette[(k+1)%3]))
+                a1=tuple(a)
+                if a1 in apparitions:
+                    apparitions[a1]+=1
+                b=np.concatenate((facette[(k+1)%3],facette[k]))
+                b1=tuple(b)
+                if b1 in apparitions:
+                    apparitions[b1]+=1
+                if b1 not in apparitions and a1 not in apparitions:
+                    apparitions[a1]=1
+        erreur=0
+        for nb in apparitions.values():
+            if nb !=2:
+                erreur+=1
+        print(f'il y a {erreur} erreurs de "shared edge rule" soit environ {100*erreur/(1.5*n)}%' )
+    return (verif,)
+
+
+@app.cell
+def __(verif):
+    with open("data/cube.stl", mode="rt", encoding="us-ascii") as cube_file:
+        cube_stl = cube_file.read()
+    verif(cube_stl)
+    return cube_file, cube_stl
 
 
 @app.cell
@@ -335,6 +530,45 @@ def __(mo):
         then develop a `OBJ_to_STL` function that is rich enough to convert the OBJ bunny file into a STL bunny file.
         """
     )
+    return
+
+
+@app.cell
+def __(make_STL, np, tokenize):
+    def OBJ_to_STL(lien):
+        with open(lien, mode="rt", encoding="us-ascii") as file:
+            obj = file.read()
+        tokens = tokenize(obj)
+        for i,item in enumerate(tokens):
+            if item=='vertex':
+                nb_v=int(tokens[i+3])
+            if item=='face':
+                nb_f=int(tokens[i+3])
+        sommets=np.zeros((nb_v,3))
+        faces=np.zeros((nb_f,3,3))
+        sommet=0
+        face=0
+        for k,item in enumerate(tokens):
+            if item=='v':
+                sommets[sommet]=[tokens[k+1],tokens[k+2],tokens[k+3]]
+                sommet+=1
+            if item=='f':
+                faces[face]=[sommets[int(tokens[k+1])-1],sommets[int(tokens[k+2])-1],sommets[int(tokens[k+3])-1]]
+                face+=1
+        with open('data/bunny.stl', "w") as file:
+            file.write(make_STL(faces))
+    return (OBJ_to_STL,)
+
+
+@app.cell
+def __(OBJ_to_STL):
+    OBJ_to_STL("data/bunny.obj")
+    return
+
+
+@app.cell
+def __(mo, show):
+    mo.show_code(show("data/bunny.stl", theta=180, phi=180, scale=1.5))
     return
 
 
@@ -459,6 +693,60 @@ def __(mo):
         """
     )
     return
+
+
+@app.cell
+def __(mesh, mo, np, show):
+    import ast
+    import os
+    import importlib.util
+
+    def jcad_to_stl(jcad_filepath, stl_filepath):
+        # Step 1: Parse the JCAD file
+        if not os.path.exists(jcad_filepath):
+            raise FileNotFoundError(f"{jcad_filepath} not found.")
+        
+        # Read the JCAD file
+        with open(jcad_filepath, 'r') as file:
+            jcad_code = file.read()
+
+        # Step 2: Execute the JCAD code to generate the geometry
+        # Create a temporary Python file to execute the JCAD code
+        spec = importlib.util.spec_from_loader("jcad", loader=None)
+        jcad_module = importlib.util.module_from_spec(spec)
+        exec(jcad_code, jcad_module.__dict__)
+
+        # Step 3: Extract the 3D geometry from the JCAD module (assumed to be mesh data)
+        # This assumes the final geometry in the JCAD file is stored in a variable like `mesh_data`
+        if not hasattr(jcad_module, 'mesh_data'):
+            raise ValueError("No mesh data found in the JCAD file.")
+        
+        mesh_data = jcad_module.mesh_data  # This should be a mesh object or something convertible to mesh
+
+        # Step 4: Convert to STL format
+        if isinstance(mesh_data, np.ndarray):
+            # Assuming mesh_data is an array of vertices and faces
+            vertices = mesh_data['vertices']  # Example: vertices could be a Nx3 array of coordinates
+            faces = mesh_data['faces']  # Example: faces could be a Mx3 array of vertex indices
+            
+            # Create a mesh for the STL file
+            stl_mesh = mesh.Mesh(np.zeros(faces.shape[0], dtype=mesh.Mesh.dtype))
+            
+            for i, face in enumerate(faces):
+                for j in range(3):
+                    stl_mesh.vectors[i][j] = vertices[face[j]]
+            
+            # Step 5: Save to STL file
+            stl_mesh.save(stl_filepath)
+            print(f"STL file saved to {stl_filepath}")
+        else:
+            raise ValueError("Unsupported mesh data format in JCAD file.")
+
+    jcad_to_stl("data/demo_jcad.jcad","data/demo.stl")
+    mo.show_code(show("data/demo.stl", theta=45.0, phi=45.0, scale=0.5))
+
+
+    return ast, importlib, jcad_to_stl, os
 
 
 @app.cell
