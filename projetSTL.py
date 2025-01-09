@@ -6,7 +6,7 @@ app = marimo.App()
 
 @app.cell
 def __(mo):
-    mo.md(""" #3D Geometry File Formats""")
+    mo.md("""#3D Geometry File Formats""")
     return
 
 
@@ -696,57 +696,8 @@ def __(mo):
 
 
 @app.cell
-def __(mesh, mo, np, show):
-    import ast
-    import os
-    import importlib.util
-
-    def jcad_to_stl(jcad_filepath, stl_filepath):
-        # Step 1: Parse the JCAD file
-        if not os.path.exists(jcad_filepath):
-            raise FileNotFoundError(f"{jcad_filepath} not found.")
-        
-        # Read the JCAD file
-        with open(jcad_filepath, 'r') as file:
-            jcad_code = file.read()
-
-        # Step 2: Execute the JCAD code to generate the geometry
-        # Create a temporary Python file to execute the JCAD code
-        spec = importlib.util.spec_from_loader("jcad", loader=None)
-        jcad_module = importlib.util.module_from_spec(spec)
-        exec(jcad_code, jcad_module.__dict__)
-
-        # Step 3: Extract the 3D geometry from the JCAD module (assumed to be mesh data)
-        # This assumes the final geometry in the JCAD file is stored in a variable like `mesh_data`
-        if not hasattr(jcad_module, 'mesh_data'):
-            raise ValueError("No mesh data found in the JCAD file.")
-        
-        mesh_data = jcad_module.mesh_data  # This should be a mesh object or something convertible to mesh
-
-        # Step 4: Convert to STL format
-        if isinstance(mesh_data, np.ndarray):
-            # Assuming mesh_data is an array of vertices and faces
-            vertices = mesh_data['vertices']  # Example: vertices could be a Nx3 array of coordinates
-            faces = mesh_data['faces']  # Example: faces could be a Mx3 array of vertex indices
-            
-            # Create a mesh for the STL file
-            stl_mesh = mesh.Mesh(np.zeros(faces.shape[0], dtype=mesh.Mesh.dtype))
-            
-            for i, face in enumerate(faces):
-                for j in range(3):
-                    stl_mesh.vectors[i][j] = vertices[face[j]]
-            
-            # Step 5: Save to STL file
-            stl_mesh.save(stl_filepath)
-            print(f"STL file saved to {stl_filepath}")
-        else:
-            raise ValueError("Unsupported mesh data format in JCAD file.")
-
-    jcad_to_stl("data/demo_jcad.jcad","data/demo.stl")
-    mo.show_code(show("data/demo.stl", theta=45.0, phi=45.0, scale=0.5))
-
-
-    return ast, importlib, jcad_to_stl, os
+def __():
+    return
 
 
 @app.cell
